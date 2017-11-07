@@ -1,4 +1,6 @@
 from nltk.tokenize import TweetTokenizer
+from gensim.models.keyedvectors import KeyedVectors
+import numpy as np
 import csv
 
 def tokenizeTweets(infile, outfile):
@@ -10,29 +12,33 @@ def tokenizeTweets(infile, outfile):
 			tkns = tknzr.tokenize(row[0])
 			writer.writerow(tkns)
 
-def loadSkipGram(filename):
-	with open(filename, newline="") as f:
-		reader = csv.reader(f, delimiter=" ")
-		skipGramVector = []
-		skipGramVocabulary = []
-		for row in reader:
-			#skipGramVocabulary.append(row[0])
-			skipGramVector.append(row[1:])
-		return skipGramVector, skipGramVocabulary
+def embeddingTweets(tkntweetDB, vectorizeDB, word2vecDB):
+	def loadSkipGram(filename):
+		model = KeyedVectors.load_word2vec_format(filename)
+		return model
 
-def embeddingTweets(tkntweetDB, embeddingDB):
+	word2vec = loadSkipGram(word2vecDB)
 	with open(tkntweetDB, newline="") as f1, open(embeddingDB, "w") as f2:
 		reader = csv.reader(f1, delimiter=" ")
 		writer = csv.writer(f2, delimiter=" ")
 		for row in reader:
-			newrow = []
+			newrow = np.zeros(300)
+			length = 0
 			for word in row:
-				if word in skipGramVocabulary:
-					newrow.append(skipGramVocabulary.index(word))
+				lowWord = word.lower()
+				if lowWord in word2vec.vocab:
+					newrow += word2vec.word_vec(lowWord)
+					length += 1
+			newrow /= length
+			writer.writerow(newrow)
 
-tweetDB = "abc.csv"
-tkntweetDB = "test.csv"
-skipGramDB = "skipGram.csv"
-tokenizeTweets(tweetDB, tkntweetDB)
-skipGramVector, skipGramVocabulary = loadSkipGram(skipGramDB)
-embeddingTweets(tkntweetDB, embeddingDB)
+if __name__=="__main__":
+	#tweetDB = "tweet_by_ID_06_11_2017__10_30_59.txt.text"
+	#tkntweetDB = "tweet_by_ID_06_11_2017__10_30_59.txt.tknt"
+	tweetDB = "abc.csv"
+	tkntweetDB = "test.csv"
+	vectorizeDB = "vectorize.csv"
+	word2vecDB = "model_swm_300-6-10-low.w2v"
+
+	tokenizeTweets(tweetDB, tkntweetDB)
+	vectorizeTweets(tkntweetDB, vectorizeDB, word2vecDB)
