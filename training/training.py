@@ -12,6 +12,7 @@ def loadSkipgram(filename):
 		for i in range(0,300):
 			attributeNames.append("sk" + str(i))
 		#reading
+		'''
 		db = []
 		counter = 0
 		for row in reader:
@@ -19,8 +20,10 @@ def loadSkipgram(filename):
 				print(counter)
 			db.append(row)
 			counter += 1
-		df = pd.DataFrame(db, columns=attributeNames)
-		return df
+		'''
+		df = pd.read_csv(f, sep=' ', names=attributeNames).values
+		print(df[0])
+	return df
 
 def loadLabelFile(filename):
 	with open(filename,newline="") as f:
@@ -28,36 +31,43 @@ def loadLabelFile(filename):
 		db = []
 		for row in reader:
 			db.append(row[0])
-		return db
+	return db
 
 if __name__ == "__main__":
 	skipgramFile = "../data/tweet_by_ID_06_11_2017__10_30_59.txt.vctr"
 	labelFile = "../data/tweet_by_ID_06_11_2017__10_30_59.txt.labels"
-	validateFile = "../data/us_trail.text"
+	validateFile = "../data/us_trial.vctr"
 	datasetName = "skipGram"
 	outputPath = "../predictoins/"
 
 	print("Loading.....")
+	print("Training set")
+	X_train = loadSkipgram(skipgramFile)
 
-	df = loadSkipgram(skipgramFile)
-	X_train = df.values
+	print("Training label")
 	Y_train = loadLabelFile(labelFile)
 
+	print("Trial set")
+	X_validate = loadSkipgram(validateFile)
 	print("Loading finished.")
 
 	models = []
-	models.append(('KNN', KNeighborsClassifier()))
 	models.append(('CART', DecisionTreeClassifier()))
-
-	X_validate = loadValidateFile(validateFile)
+	models.append(('KNN', KNeighborsClassifier()))
 
 	for name, model in models:
 		print("Fitting: " + name)
 		model.fit(X_train, Y_train)
 		print("Predicting: " + name)
-		predictions = moedl.predict(X_validate)
-		fileName = datasetName + name + "Prediction.labels"
-		with open(fileName) as f:
+		predictions = model.predict(X_validate)
+		print(predictions[:10])
+		print("Outputing:")
+		fileName = outputPath + datasetName + name + "Prediction.labels"
+		with open(fileName, "w") as f:
 			writer = csv.writer(f, delimiter=" ")
+			counter = 0
 			for item in predictions:
+				if counter % 1000 == 0:
+					print(counter)
 				writer.writerow([item])
+				counter += 1
