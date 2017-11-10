@@ -3,6 +3,8 @@ import numpy
 import csv
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
 
 def loadSkipgram(filename):
 	with open(filename,newline="") as f:
@@ -38,7 +40,7 @@ if __name__ == "__main__":
 	labelFile = "../data/tweet_by_ID_06_11_2017__10_30_59.txt.labels"
 	validateFile = "../data/us_trial.vctr"
 	datasetName = "skipGram"
-	outputPath = "../predictoins/"
+	outputPath = "../evaluation/"
 
 	print("Loading.....")
 	print("Training set")
@@ -52,8 +54,10 @@ if __name__ == "__main__":
 	print("Loading finished.")
 
 	models = []
-	models.append(('CART', DecisionTreeClassifier()))
-	models.append(('KNN', KNeighborsClassifier()))
+	#models.append(('CART', DecisionTreeClassifier()))
+	#models.append(('KNN', KNeighborsClassifier()))
+	models.append(('RandomForest', RandomForestClassifier()))
+	models.append(('SVM', SVC()))
 
 	for name, model in models:
 		print("Fitting: " + name)
