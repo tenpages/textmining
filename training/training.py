@@ -1,10 +1,10 @@
 import pandas as pd
-import numpy
+import numpy as np
 import csv
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.svm import SVC
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import LinearSVC
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 
 def loadSkipgram(filename):
 	with open(filename,newline="") as f:
@@ -35,29 +35,57 @@ def loadLabelFile(filename):
 			db.append(row[0])
 	return db
 
+def loadFeatures(featureList, handle):
+	attributeNames = []
+	df = pd.DataFrame()
+	for i in featureList:
+		with open(handle+i+'.csv',newline="") as f:
+			reader = csv.reader(f, delimiter=" ")
+			attributeNames.append(i)
+			df[i]=pd.read_csv(f,sep=' ',names=[i])
+	print(df[:10])
+	return df.values
+
 if __name__ == "__main__":
 	skipgramFile = "../data/tweet_by_ID_06_11_2017__10_30_59.txt.vctr"
 	labelFile = "../data/tweet_by_ID_06_11_2017__10_30_59.txt.labels"
 	validateFile = "../data/us_trial.vctr"
 	datasetName = "skipGram"
+	#datasetName = ""
 	outputPath = "../evaluation/"
+	featureList = ['PRepeat', 'PSlang', 'PPositive', 'PNegative', 'NN', 'VB',
+				   'JJ', 'RB', 'Non-Eng', 'SentimentScore', 'Stopwords', 'UppercaseRatio','@']
 
 	print("Loading.....")
 	print("Training set")
-	X_train = loadSkipgram(skipgramFile)
+	#X_train = loadSkipgram(skipgramFile)
+	handle = "../features/"
+	X_train = loadFeatures(featureList,handle)
+	#X_train2 = loadFeatures(featureList,handle)
+	#X_train = np.column_stack((X_train,X_train2))
 
 	print("Training label")
 	Y_train = loadLabelFile(labelFile)
 
 	print("Trial set")
-	X_validate = loadSkipgram(validateFile)
+	#X_validate = loadSkipgram(validateFile)
+	handle = "../features/trial/"
+	X_validate = loadFeatures(featureList,handle)
+	#X_validate2 = loadFeatures(featureList,handle)
+	#X_validate = np.column_stack((X_validate,X_validate2))
 	print("Loading finished.")
 
 	models = []
-	#models.append(('CART', DecisionTreeClassifier()))
 	#models.append(('KNN', KNeighborsClassifier()))
 	models.append(('RandomForest', RandomForestClassifier()))
-	models.append(('SVM', SVC()))
+	models.append(('CART', DecisionTreeClassifier()))
+	models.append(('AdaBoost', AdaBoostClassifier()))
+	#models.append(('SVM', LinearSVC()))
+
+	handle = ""
+	for feature in featureList:
+		handle += "." + feature
+	handle += ".labels"
 
 	for name, model in models:
 		print("Fitting: " + name)
@@ -66,7 +94,7 @@ if __name__ == "__main__":
 		predictions = model.predict(X_validate)
 		print(predictions[:10])
 		print("Outputing:")
-		fileName = outputPath + datasetName + name + "Prediction.labels"
+		fileName = outputPath + datasetName + name + handle
 		with open(fileName, "w") as f:
 			writer = csv.writer(f, delimiter=" ")
 			counter = 0
