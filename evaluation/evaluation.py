@@ -15,14 +15,15 @@ def loadLabels(filename):
 
 def evaluation(name):
 	datasetName = "skipGram"
-	predFile = datasetName + name + "Prediction.labels"
+	datasetName = ""
+	predFile = datasetName + name + ".PRepeat.PSlang.PPositive.PNegative.NN.VB.JJ.RB.Non-Eng.SentimentScore.Stopwords.UppercaseRatio.labels"#"Prediction.labels"
 	trueFile = "../data/us_trial.labels"
 
 
 	Y_validate = loadLabels(predFile)
 	predictions = loadLabels(trueFile)
 
-	with open("report_"+datasetName+name+".txt", "w") as f:
+	with open("report_"+datasetName+name+".PRepeat.PSlang.PPositive.PNegative.NN.VB.txt", "w") as f:
 		print("Dataset: " + datasetName, file=f)
 		print("Method: " + name, file=f)
 		print("\nAccuracy: ",accuracy_score(Y_validate, predictions), file=f)
@@ -30,4 +31,6 @@ def evaluation(name):
 		print("\nScores:\n",classification_report(Y_validate, predictions), file=f)
 
 evaluation('CART')
+evaluation('RandomForest')
+evaluation('AdaBoost')
 #evaluation('KNN')
