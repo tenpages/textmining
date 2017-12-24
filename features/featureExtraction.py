@@ -490,6 +490,7 @@ if __name__=="__main__":
     for root in rootList:
         feature = drawFeature(root.nodeList)
         featureList.append(feature)
+    #output
     for i in range(15):
         filename = "feature" + str(i) + ".csv"
         fo = open(filename,"w")
