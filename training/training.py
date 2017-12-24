@@ -1,10 +1,10 @@
 import pandas as pd
 import numpy as np
 import csv
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.tree import DecisionTreeClassifier, ExtraTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import LinearSVC
-from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, GradientBoostingClassifier
 
 def loadSkipgram(filename):
 	with open(filename,newline="") as f:
@@ -14,15 +14,6 @@ def loadSkipgram(filename):
 		for i in range(0,300):
 			attributeNames.append("sk" + str(i))
 		#reading
-		'''
-		db = []
-		counter = 0
-		for row in reader:
-			if counter % 1000 == 0:
-				print(counter)
-			db.append(row)
-			counter += 1
-		'''
 		df = pd.read_csv(f, sep=' ', names=attributeNames).values
 		print(df[0])
 	return df
@@ -40,9 +31,23 @@ def loadFeatures(featureList, handle):
 	df = pd.DataFrame()
 	for i in featureList:
 		with open(handle+i+'.csv',newline="") as f:
-			reader = csv.reader(f, delimiter=" ")
-			attributeNames.append(i)
 			df[i]=pd.read_csv(f,sep=' ',names=[i])
+	print(df[:10])
+	return df.values
+
+def loadDescriptions(handle):
+	df = pd.DataFrame()
+	for i in range(0,20):
+		with open(handle+str(i)+".csv", newline="") as f:
+			df["des"+str(i)]=pd.read_csv(f, sep=' ', names=["des"+str(i)])
+	print(df[:10])
+	return df.values
+
+def loadTopwords(handle):
+	df = pd.DataFrame()
+	for i in range(0,20):
+		with open(handle+str(i)+".csv", newline="") as f:
+			df["des"+str(i)]=pd.read_csv(f, sep=' ', names=["des"+str(i)])
 	print(df[:10])
 	return df.values
 
@@ -61,8 +66,11 @@ if __name__ == "__main__":
 	#X_train = loadSkipgram(skipgramFile)
 	handle = "../features/"
 	X_train = loadFeatures(featureList,handle)
-	#X_train2 = loadFeatures(featureList,handle)
-	#X_train = np.column_stack((X_train,X_train2))
+	X_train2 = loadFeatures(featureList,handle)
+	X_train = np.column_stack((X_train,X_train2))
+	handle = "../features/descriptions"
+	X_train2 = loadDescriptions(handle)
+	X_train = np.column_stack((X_train,X_train2))	
 
 	print("Training label")
 	Y_train = loadLabelFile(labelFile)
@@ -71,17 +79,20 @@ if __name__ == "__main__":
 	#X_validate = loadSkipgram(validateFile)
 	handle = "../features/trial/"
 	X_validate = loadFeatures(featureList,handle)
-	#X_validate2 = loadFeatures(featureList,handle)
-	#X_validate = np.column_stack((X_validate,X_validate2))
+	X_validate2 = loadFeatures(featureList,handle)
+	X_validate = np.column_stack((X_validate,X_validate2))
+	handle = "../features/trial/descriptions"
+	X_validate2 = loadDescriptions(handle)
+	X_validate = np.column_stack((X_train,X_train2))	
 	print("Loading finished.")
 
 	models = []
-	#models.append(('KNN', KNeighborsClassifier()))
 	models.append(('RandomForest', RandomForestClassifier()))
+	models.append(('ExtraTree', ExtraTreeClassifier()))
 	models.append(('CART', DecisionTreeClassifier()))
 	models.append(('AdaBoost', AdaBoostClassifier()))
-	#models.append(('SVM', LinearSVC()))
-
+	models.append(('GradientBoosting', GradientBoostingClassifier()))
+	
 	handle = ""
 	for feature in featureList:
 		handle += "." + feature
