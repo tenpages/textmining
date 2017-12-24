@@ -7,7 +7,7 @@ Text Mining & Analysis (COSC-586), Fall 2017
 
 ### Division of work:
 * **Jiarong Yu** and **Shuai Hao**: feature extraction and implementation. See folders **[pre_and_chi](https://github.com/tenpages/textmining/tree/master/pre_and_chi)** and **[features](https://github.com/tenpages/textmining/tree/master/features)** for detailed information;
-* **Shuo Liu**: feature extraction (part of), baseline implementation, model training and evaluation. Also organized the reporsitory and the writing of final report.
+* **Shuo Liu**: feature extraction (part of), baseline implementation, model training and evaluation. Also organized this reporsitory and the writing of final report.
 
 ### Code intro. & File structure:
 ├ **Data**
