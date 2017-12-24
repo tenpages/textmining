@@ -1,0 +1,468 @@
+\documentclass[english, table, latin9]{article}
+\title{Project report on emoji prediction with feature-based methods}
+
+\author{Shuo Liu, Jiarong Yu and Shuai Hao}
+
+\usepackage[a4paper,hmargin={2.54cm,2.54cm},vmargin={3.17cm,3.17cm}]{geometry}
+
+\usepackage{amsmath,amssymb,amsthm,amstext,booktabs,subfig,epstopdf,graphicx,tabularx}
+\usepackage{algpseudocode}
+
+% for emojis display
+\usepackage[utf8]{inputenc}
+\usepackage{emoji}
+
+% pie charts
+\usepackage{tikz,pgfplots}
+\usepackage{pgf-pie}
+
+%\numberwithin{equation}{chapter}
+\usepackage[runin]{abstract}
+
+\usepackage[pdfborder={0 0 0},colorlinks=true,linkcolor=blue,CJKbookmarks=true]{hyperref}
+
+\setlength{\absleftindent}{1.5cm} \setlength{\absrightindent}{1.5cm}
+\setlength{\abstitleskip}{-\parindent}
+\setlength{\absparindent}{0cm}
+
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+\newtheorem{example}{Example}
+
+\renewcommand{\algorithmicrequire}{\textbf{Input:}} % Use Input in the format of Algorithm
+\renewcommand{\algorithmicensure}{\textbf{Output:}} % Use Output in the format of Algorithm
+
+
+\usepackage[T1]{fontenc}
+\usepackage{inputenc}
+\usepackage{babel}
+\usepackage{xcolor}
+\usepackage{collcell}
+\usepackage{hhline}
+\usepackage{pgf}
+\usepackage{multirow}
+
+\def\colorModel{hsb} %You can use rgb or hsb
+
+\newcommand\ColCell[1]{
+ \pgfmathparse{#1<=0.35?1:0} %Threshold for changing the font color into the cells
+  \ifnum\pgfmathresult=0\relax\color{white}\fi
+ \pgfmathsetmacro\compA{0}   %Component R or H
+ \pgfmathsetmacro\compB{#1/0.71} %Component G or S
+ \pgfmathsetmacro\compC{1}   %Component B or B
+ \edef\x{\noexpand\centering\noexpand\cellcolor[\colorModel]{\compA,\compB,\compC}}\x #1
+ } 
+\newcolumntype{E}{>{\collectcell\ColCell}m{0.4cm}<{\endcollectcell}} %Cell width
+
+
+\date{}
+%%%%%%%%%%%%%%%%%%%导言区设置完毕
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+\maketitle
+\begin{abstract}
+Recently, emojis are widely used in the communication in social media like Twitter. Since the emojis have played an important role in the tweets, they become more and more important in the Natural Language Processing. This report focuses on the problem proposed in the paper of F. Barbieri \emph{et al.}\cite{bib4}. We use feature-based method to predict emojis based on text-based tweet messages. After we extracted the features we use several machine learning methods like random forest to validate the correctness of our method, compared with the benchmark. This report also shows the results of the evaluation. It seems that features we extracted only have a slight improvement compared with the benchmark. This report also proposed several ways to improve our projects in the future.
+
+%\noindent{关键字:} 高斯图模型, 生命周期, 图Lasso.
+\end{abstract}
+
+
+\section{Introduction}
+\label{sc1}
+Recently, short text messages combine with visual enhancements provided a nobel way of communication in social media like Twitter, Facebook, Instagram and so on. Those visual enhancements called emojis. Emojis have become one of the most popular communication form in social media.  Since emojis sentiment are popular and meaningful\cite{bib13} in Natural Language Processing (NLP). There are many studies focused on semantics and usage of emojis in social media \cite{bib6, bib7, bib8, bib9, bib10, bib11}, or using emoji for sentiment analysis in twitter, using emojis for detecting irony \cite{bib12}. However there are a few work interplay between text-based messages and emojis remians virtually unexplored and those work are related to deep learning. There are not feature based achievement in investigating the relation between text and emojis. Therefore our project aims to using feature based method to predict emojis based on text-based tweet messages.
+
+\section{Related work}
+\label{sc2}
+Though it is a very interesting area of study, researches on emoji prediction the perticular task is quite few. One of the leading work is by Barbiere \emph{et al.}, who are also organizers of the CodaLab competition\footnote{https://competitions.codalab.org/competitions/17344}, using deep learning method BLSTM for their model. Other works earlier or later also used the same deep learning method. 
+\par Other researches tried to detect the sentiments or meanings of emojis\cite{bib9}, or using emojis for sentiment or sarcasm ditection of tweets and other short messages of social networks\cite{bib14, bib12}. Some researches used skip-gram for word embedding and received good results\cite{bib9}. Some of these researches in related topics are using feature-based classification methods\cite{bib13, bib14}.
+
+\section{Approaches}
+\label{sc3}
+\subsection{Problem modeling}
+\label{sc31}
+There are many ways of predicting suitable emojis for a short text message, \emph{e.g.} a tweet. In this perticular task, the problem is modeled as a multi-classification problem, where only one emoji is attached to a tweet, and the position is irrelevant. Thus, to predict the emoji of a tweet is to classify a tweet with emojis as labels.
+
+\subsection{Pre-processing}
+\label{sc32}
+Punctuations, @user's and other meaningless words are removed.
+After regular pre-processing we label different words in the tweets with not only regular PoS but also \texttt{@} to location, \texttt{NE} to non-english words, \texttt{slang} to non-english word but slangs, \texttt{repeat} to words with repeated characters like sadddddddd. 
+
+\begin{example}
+Tokens from a tweet \textnormal{`Things got a little festive at the office \#christmas2016 @EllisIslandCafe'} will be labeled as follows: \\\textnormal{\texttt{
+[['Things', 'NN'], ['got', 'VB'], ['a', 'ST'], ['little', 'JJ'], ['festive', 'NN'], ['at', 'ST'], ['the', 'ST'], ['office', 'NN'], ['\#christmas2016', 'NE'], ['@EllisIslandCafe', '@'], [0, 'FT'], [0, 'FT'], [1, 'FT'], [1, 'FT'], [1, 'FT]]}}.
+\end{example}
+
+\par \texttt{FT}'s in the example means feature we detect if the text contains, in the same order, any slangs, repeated characters, @location's, positive emotion words and negative emotion words. We use online slang dictionary \cite{bib5} to check if some word is a slang. We also detect repeat character words and use positive and negative words dictionary to check if a word is belongs to positive emotion or negative emotion. Then we create a list to contain those pre-processing infomation. The reason to do so is it is better to remain some non-english word or @location in some classification processing but some other processing need to delete some information, and we leave those information feasible to delete or keep for future processing.
+
+\subsection{Feature Extraction}
+\label{sc33}
+After the pre-processing, we design a tree representation of tweets to combine many categories of features in one convenient representation. This idea comes from \cite{bib1}. The tree has three levels. Firstly, we initialize the main tree to be root. In the second level, the tree contains four kinds of nodes, namely \texttt{EW}, \texttt{NE}, \texttt{ST} and \texttt{FT}. In these representations, \texttt{EW} stands for ``English words'', \texttt{NE} stands for ``Non-English words'', \texttt{ST} stands for ``Stop words'', and \texttt{FT} stands for ``Feature''. In the third level, \texttt{EW} nodes contains two children, while other kinds of nodes in second level contains one child. For the \texttt{EW}, the first child is the word itself, the other one is the part-of-speech of this word. For \texttt{ST}'s and \texttt{NE}'s, the child is the word itself. And for \texttt{FT}'s, its child is the value of of the feature obtained in the pre-processing. Figure \ref{fig:tree} shows an example of the tree structure.
+
+\begin{figure}[t]
+	\centering
+	\begin{tikzpicture}[sibling distance=5.5em,
+		every node/.style={shape=rectangle, rounded corners,
+			draw, align=center, top color=white, bottom color=blue!20}
+		]
+	\node {Root}
+		child { [sibling distance=3em] node {\texttt{ST}} 
+			child { node {I} } }
+		child { [sibling distance=3em] node {\texttt{EW}} 
+			child { node {loooove} }
+			child { node {\texttt{VB}} } }
+		child { [sibling distance=3em] node {\texttt{EW}}
+			child { node {new} }
+			child { node {\texttt{JJ}} } }
+		child { [sibling distance=3em] node {\texttt{EW}} 
+			child { node {friend} }
+			child { node {\texttt{NN}} } }
+		child { [sibling distance=3em] node {\texttt{NE}} 
+			child { node {j\_c} } }
+		child { [sibling distance=3em] node {\texttt{EW}} 
+			child { node {alabama} }
+			child { node {\texttt{NN}} } }
+		child { [sibling distance=3em] node {\texttt{FT}}
+			child { node {0} } }
+		child { [sibling distance=3em] node {\texttt{FT}}
+			child { node {1} } }
+		child { [sibling distance=3em] node {...} };
+	\end{tikzpicture}
+	\caption{Example tree structure of a tweet. The original treet is `\texttt{I loooove new friend j\_c alabama}'.}
+	\label{fig:tree}
+\end{figure}
+
+\par Table \ref{tb:features} shows the features we designed at the beginning of the project\cite{bib1}. Those features can be divided into 3 categories. The first category is the features whose type is integer. They can be extracted by performing linear search through all the trees. The second category is the features whose type is boolean, those features have been extracted in the pre-processing procedure. The third category contains Uppercase Ratio, Sentiment Score and Overlapping Ratio. The Uppercase Ratio is the number of capitalized text over all the characters of each tweets. The Sentiment Score is calculated by a python package called ``Textblob''\cite{bib2}. Also, we collected the descriptions of each emoji from their definition to see the overlapping ratio of tweets and those descriptions.
+
+\begin{table}[t]
+\caption{Features extracted from the tweets}
+\label{tb:features}
+\centering
+\begin{tabularx}{420pt}{ll|ll||ll}
+	\toprule
+		\textbf{Feature} & \textbf{Type} & \textbf{Feature} & \textbf{Type} & \textbf{Feature}: Presence of & \textbf{Type} \\
+	\midrule
+		\# of \texttt{JJ} & \texttt{int} & \# of \texttt{NE} & \texttt{int} & \texttt{@}'s & \texttt{bool} \\
+		\# of \texttt{NN} & \texttt{int} & \# of \texttt{negations} & \texttt{int} & Slangs & \texttt{bool} \\
+		\# of \texttt{VB} & \texttt{int} & Uppercase ratio & \texttt{float} & Positive words & \texttt{bool} \\
+		\# of \texttt{AB} & \texttt{int} & Sentiment score & \texttt{float} & Negative words & \texttt{bool} \\
+		\# of stop words & \texttt{int} & Overlapping ratios & \texttt{floats$\times$20} & Repeated characters & \texttt{bool} \\
+	\bottomrule
+\end{tabularx}
+\end{table}
+
+After we got all the value of the features, we found that the results are not as good as we thought. After discussed, we thought that those features work better in other works because their works are mainly binary classification problems so we decided to add some more features\cite{bib3}. In the end we added three more groups of features based on TF, TF-IDF and $\chi^2$.
+
+\subsection{Baselines}
+\label{sc34}
+We took two baselines\cite{bib4} for comparison. (1) \textbf{Bag-of-words}: We represent each tweet with a vector of the most informative tokens selected using TF-IDF. (2) \textbf{Skip-gram vector average}: We represent each tweet with an average of vectors corresponding to tokens of the tweet. Each tweet $m$ is represented with vector $V_m$:
+	\[
+		V_m=\frac{\sum_{t\in T_m}S_t}{\lvert T_m\rvert}
+	\]
+where $T_m$ are the set of tokens of the tweet $m$ and $S_t$ is the vector of token $t$ in the skip-gram model.
+
+\section{Experiments and evaluations}
+\label{sc4}
+Experiments were conducted for studying the performances of methods and features that we intended to try out.
+
+\subsection{Datasets}
+The datasets we used for our experiments are provided by the CodaLab competition organizers. The training set consists of nearly 500,000 tweets in English which were posted during October 2015 to February 2017, geolocalized in the United States, and retrieved with Twitter APIs. Those tweets contain and only contain one emoji out of 20 most frequently used emojis. The trial set consists of 50,000 tweets with the same characters. Labels (corresponding emojis) of tweets in the training set are also provided as shown in Table \ref{tb:emojis}.
+
+\begin{table}[t]
+\caption{20 most frequent emojis in English tweets in the United States}
+\label{tb:emojis}
+\centering
+\begin{tabularx}{240pt}{l|cccccccccc}
+	\toprule
+	\# & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 \\
+	\midrule
+	  & \emoji{2764} & \emoji{1F60D} & \emoji{1F602} & \emoji{1F495} & \emoji{1F525} & \emoji{1F60A} & \emoji{1F60E} & \emoji{2728} & \emoji{1F499} & \emoji{1F618} \\
+	\midrule
+	\# & 10 & 11 & 12 & 13 & 14 & 15 & 16 & 17 & 18 & 19 \\
+	\midrule
+	  & \emoji{1F4F7} & \emoji{1F1FA-1F1F8} & \emoji{2600} & \emoji{1F49C} & \emoji{1F609} & \emoji{1F4AF} & \emoji{1F601} & \emoji{1F384} & \emoji{1F4F8} & \emoji{1F61C} \\
+	\bottomrule
+\end{tabularx}
+\end{table}
+
+\par There are some fact we want to point out about the datasets. (1) The classes are imbalanced in both training set and trail set, which is determined by their frequencies. (Figure \ref{fig: imbalanced}) Although they are the 20 most frequent emojis, the first and the last one take very different portion in the datasets. (2) There are some groups of emojis are quite same (in shape), specifically, emojis \emoji{1F4F7} and \emoji{1F4F8}, emojis \emoji{1F618} and \emoji{1F609}, and emojis \emoji{2764}, \emoji{1F499}, \emoji{1F49C}, and \emoji{1F495}. Similar shape means users might not be able to tell if there is significant difference among those groups of emojis, leading to confusion of using. (3) Label (\emph{i.e.} emoji) of a certain tweet is stripped from the text content and stored seperately. No position information is kept for the emoji. Tweets with multiple emojis are treated as multiple tweets with one of these different emojis, so there might be repeated text entries in the training set (but with different labels). Yet there are no repeated entries in the trial set (which might be selections of the organizers), so the case of self-penalization by duplicated tweets in trial set on the scores can be ignored.
+
+\begin{figure}[t]
+	\centering
+	\subfloat[]{
+		\begin{minipage}[t]{.5\textwidth}
+			\begin{tikzpicture}
+				\pie{21.7/\emoji{2764}, 10.5/\emoji{1F60D}, 10.3/\emoji{1F602}, 5.5/\emoji{1F495}, 5.0/\emoji{1F525}, 4.7/\emoji{1F60A}, 4.3/\emoji{1F60E}, 3.7/\emoji{2728}, 3.4/\emoji{1F499}, 3.26/\emoji{1F618}, 3.25/\emoji{1F4F7}, 3.1/\emoji{1F1FA-1F1F8}, 2.8/\emoji{2600}, 2.62/\emoji{1F49C}, 2.72/\emoji{1F609}, 2.7/\emoji{1F4AF}, 2.64/\emoji{1F601}, 2.6/\emoji{1F384}, 2.68/\emoji{1F4F8}, 2.49/\emoji{1F61C}}
+			\end{tikzpicture}
+		\end{minipage}
+	}
+	\subfloat[]{
+		\begin{minipage}[t]{.5\textwidth}
+			\begin{tikzpicture}
+				\pie{21.5/\emoji{2764}, 10.6/\emoji{1F60D}, 10.5/\emoji{1F602}, 5.8/\emoji{1F495}, 5.0/\emoji{1F525}, 4.6/\emoji{1F60A}, 4.1/\emoji{1F60E}, 3.8/\emoji{2728}, 3.6/\emoji{1F499}, 3.34/\emoji{1F618}, 3.09/\emoji{1F4F7}, 3.06/\emoji{1F1FA-1F1F8}, 2.9/\emoji{2600}, 2.7/\emoji{1F49C}, 2.75/\emoji{1F609}, 2.5/\emoji{1F4AF}, 2.6/\emoji{1F601}, 2.56/\emoji{1F384}, 2.57/\emoji{1F4F8}, 2.43/\emoji{1F61C}}
+			\end{tikzpicture}
+		\end{minipage}
+	}
+	\caption{Pie charts for classes in datasets. (a) shows percentages of emojis in training set (~500k tweets), while (b) shows the trial set (50k tweets).}
+	\label{fig: imbalanced}
+\end{figure}
+
+Also, a pretrained skip-gram model is used as one of our baselines mentioned above, which is provided by the competition organizers. The model is trained by `20M geolocalized tweets posted from October 2015 to Feburary 2017', and the dimension of the skip-gram vectors is 300\cite{skipgram}.
+
+\subsection{Methods and Evaluations}
+The features we used are talked in previous parts of this report. We are going to use different combinations of these features to train different models, and compare the performances of them: tree-based: \emph{random forest}, \emph{extra tree} and a decision tree (\emph{CART}), and boosting: \emph{Adaboost} and \emph{gradient boosting}.
+
+\par Following the instructions of the competition organizers, we use \emph{macro F1-score} to evaluate the performances of different features and methods. The reason using macro F1-score is that we would like a better overall performance, which `would inherently mean a better sensitivity to the use of emojis in general, rather than for instance overfitting a model to do well in the three or four most common emojis of the test data' \footnote{by specifications of the organizers.}.
+
+
+\subsection{Results and analysis}
+In this subsection we will talk about results of the experiments.
+
+\par Figure \ref{tb:difmethods} shows the feature combinations receiving highest F1-scores on each method. As we can see, random forest and CART\footnote{Although the highest score of extra tree is close to CART, scores for other feature combinations are much lower} outperform other methods. The detailed results of these two methods are shown in Table \ref{tb:detailed}.
+
+\begin{table}[t]
+\caption{Highest F1-scores for different methods}
+\label{tb:difmethods}
+\centering
+\begin{tabularx}{350pt}{l|XX}
+	\toprule
+		\textbf{Methods} & \textbf{Highest F1-score} & \textbf{Corresponding featres} \\
+	\midrule
+		random forest & \textbf{0.5148762} & +tf \\
+		CART & \textbf{0.450688} & +tfidf \\
+		extra tree & 0.4452189 & +chi \\
+		gradient boosting & 0.1821114 & +chi(WordNet) \\
+		Adaboost & 0.1605175 & +descriptions \\
+	\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[t]
+\caption{F1-scores for random forest and CART with different feature combinations}
+\label{tb:detailed}
+\centering
+\begin{tabularx}{350pt}{l|XX}
+	\toprule
+		\textbf{Feature combinations} & \textbf{Random forest} & \textbf{CART} \\
+	\midrule
+		bag of words & 0.35034 & 0.34952 \\
+		skip-gram & 0.51137 & 0.44203 \\
+		skip-gram (uppercase sensitive) & 0.50655 & 0.44178 \\
+	\midrule
+		features only & 0.38154 & 0.36380 \\
+		skip-gram + features without @ & 0.50996 & 0.44317 \\
+		skip-gram + features include @ & 0.51169 & 0.44404 \\ 
+	\midrule
+		skip-gram + features + descriptions & 0.51379 & 0.44890 \\
+		skip-gram + features + tf-idf & 0.51245 & \textbf{0.45069} \\
+		skip-gram + features + tf & \textbf{0.51488} & 0.45054 \\
+		skip-gram + features + chi & 0.51162 & 0.44399 \\
+		skip-gram + features + chi(WordNet) & 0.51007 & 0.44338 \\
+	\midrule
+		BLSTM by the organizers & & 0.2725 \\
+	\bottomrule
+\end{tabularx}
+\end{table}
+
+\par Out of all these methods and feature combinations, we find that using random forest with all features and tf received the best result. Table \ref{tb:confmat} and \ref{tb:scores} shows the confusion matrix and scores for different emojis of this method and feature combination. Deviations of F1-scores of emojis from the macro score is not very much; that is, perfomance on different emojis are balanced. Also, for similar emoji groups we mentioned in the previous subsection, the results indicate that there are some kind of differences of people using these similar emojis, and the classifier was able to capture the differences.
+\par There are some problems indicated by the two tables as well. Firstly, the classifier's performance on the 2 most frequent emojis (\emoji{2764} and \emoji{1F60D}) are relatively bad comparing to the rest. The original experiment of compitition organizer\cite{bib4} also had this issue. It is our speculation that users use these two emojis in various occasions (more than 30 percents of all tweets in our datasets), or the two emojis are semantically generalized and do not carry specific meanings in many cases. As a comparison, the emoji \emoji{1F384} received the highest F1-score over all 20 emojis, probably because that the emoji would only be used in Christmas related tweets. Another problem is that for all emojis, the most mis-predicted answer is the emomji \emoji{2764}, the most frequent one. The reason might also be that people would use this emoji in so many cases that there is no specific (or fixed) meaning in it when people are using it.
+
+\begin{table}[t]
+\caption{Normalized confusion matrix for random forest with \emph{`skip-gram + features + tf'}}
+\label{tb:confmat}
+\centering
+\newcommand\items{20}  %Number of classes
+\arrayrulecolor{white} %Table line colors
+\begin{tabular}{cc*{\items}{|E}|}
+\multicolumn{1}{c}{} &\multicolumn{1}{c}{} &\multicolumn{\items}{c}{Predicted} \\ \hhline{~*\items{|-}|}
+\multicolumn{1}{c}{} & 
+\multicolumn{1}{c}{} & 
+\multicolumn{1}{c}{\emoji{2764}} &
+\multicolumn{1}{c}{\emoji{1F60D}} & 
+\multicolumn{1}{c}{\emoji{1F602}} & 
+\multicolumn{1}{c}{\emoji{1F495}} & 
+\multicolumn{1}{c}{\emoji{1F525}} & 
+\multicolumn{1}{c}{\emoji{1F60A}} & 
+\multicolumn{1}{c}{\emoji{1F60E}} & 
+\multicolumn{1}{c}{\emoji{2728}} & 
+\multicolumn{1}{c}{\emoji{1F499}} & 
+\multicolumn{1}{c}{\emoji{1F618}} &
+\multicolumn{1}{c}{\emoji{1F4F7}} & 
+\multicolumn{1}{c}{\emoji{1F1FA-1F1F8}} & 
+\multicolumn{1}{c}{\emoji{2600}} & 
+\multicolumn{1}{c}{\emoji{1F49C}} & 
+\multicolumn{1}{c}{\emoji{1F609}} & 
+\multicolumn{1}{c}{\emoji{1F4AF}} & 
+\multicolumn{1}{c}{\emoji{1F601}} & 
+\multicolumn{1}{c}{\emoji{1F384}} & 
+\multicolumn{1}{c}{\emoji{1F4F8}} & 
+\multicolumn{1}{c}{\emoji{1F61C}}
+\\ \hhline{~*\items{|-}|}
+\multirow{\items}{*}{\rotatebox{90}{Actual}} 
+& \emoji{2764} & .48 & .07 & .01 & .02 & .04 & .03 & .01 & .01 & .02 & .01 & .01 & .02 & .04 & .05 & .02 & .03 & .02 & .03 & .03 & .03 \\ \hhline{~*\items{|-}|}
+& \emoji{1F60D} & .22 & .35 & .02 & .02 & .03 & .02 & .02 & .01 & .02 & .01 & .01 & .02 & .05 & .04 & .03 & .03 & .03 & .03 & .02 & .02 \\ \hhline{~*\items{|-}|}
+& \emoji{1F602} & .13 & .04 & .50 & .01 & .02 & .01 & .01 & .01 & .01 & .01 & .04 & .01 & .03 & .01 & .04 & .02 & .02 & .03 & .01 & .02 \\ \hhline{~*\items{|-}|}
+& \emoji{1F495} & .13 & .04 & .01 & .56 & .02 & .01 & .01 & .01 & .01 & .01 & .02 & .01 & .03 & .02 & .01 & .02 & .03 & .02 & .02 & .01 \\ \hhline{~*\items{|-}|}
+& \emoji{1F525} & .2 & .03 & .01 & .01 & .44 & .02 & .01 & .01 & .02 & .01 & .02 & .01 & .02 & .03 & .03 & .02 & .05 & .01 & .02 & .02 \\ \hhline{~*\items{|-}|}
+& \emoji{1F60A} & .17 & .04 & .01 & .01 & .02 & .54 & .01 & .01 & .01 & .01 & .01 & .01 & .02 & .04 & .02 & .02 & .01 & .02 & .03 & .01 \\ \hhline{~*\items{|-}|}
+& \emoji{1F60E} & .13 & .03 & .00 & .01 & .02 & .01 & .56 & .01 & .01 & .01 & .01 & .02 & .06 & .02 & .02 & .03 & .02 & .02 & .01 & .01 \\ \hhline{~*\items{|-}|}
+& \emoji{2728} & .10 & .04 & .01 & .01 & .01 & .01 & .01 & .56 & .01 & .01 & .01 & .01 & .06 & .02 & .03 & .02 & .02 & .03 & .01 & .01 \\ \hhline{~*\items{|-}|}
+& \emoji{1F499} & .10 & .04 & .01 & .01 & .01 & .01 & .01 & .02 & .59 & .01 & .01 & .01 & .05 & .02 & .02 & .03 & .03 & .02 & .01 & .01 \\ \hhline{~*\items{|-}|}
+& \emoji{1F618} & .11 & .03 & .00 & .01 & .01 & .00 & .00 & .01 & .01 & .71 & .00 & .00 & .02 & .02 & .01 & .02 & .01 & .01 & .01 & .01 \\ \hhline{~*\items{|-}|}
+& \emoji{1F4F7} & .11 & .03 & .04 & .01 & .01 & .01 & .01 & .01 & .01 & .01 & .58 & .01 & .03 & .02 & .03 & .02 & .03 & .02 & .01 & .01 \\ \hhline{~*\items{|-}|}
+& \emoji{1F1FA-1F1F8} & .09 & .03 & .02 & .01 & .01 & .00 & .01 & .01 & .01 & .00 & .01 & .63 & .04 & .02 & .02 & .02 & .02 & .01 & .01 & .01 \\ \hhline{~*\items{|-}|}
+& \emoji{2600} & .13 & .05 & .01 & .01 & .01 & .01 & .02 & .03 & .02 & .01 & .02 & .02 & .50 & .02 & .03 & .03 & .02 & .02 & .01 & .02 \\ \hhline{~*\items{|-}|}
+& \emoji{1F49C} & .24 & .05 & .01 & .01 & .02 & .02 & .01 & .01 & .01 & .01 & .00 & .01 & .02 & .46 & .01 & .03 & .02 & .02 & .03 & .02 \\ \hhline{~*\items{|-}|}
+& \emoji{1F609} & .09 & .03 & .02 & .01 & .02 & .01 & .01 & .02 & .01 & .01 & .02 & .01 & .04 & .01 & .62 & .02 & .02 & .02 & .01 & .01 \\ \hhline{~*\items{|-}|}
+& \emoji{1F4AF} & .13 & .04 & .01 & .01 & .03 & .01 & .01 & .01 & .02 & .01 & .01 & .01 & .03 & .02 & .01 & .58 & .02 & .01 & .01 & .01 \\ \hhline{~*\items{|-}|}
+& \emoji{1F601} & .11 & .04 & .01 & .02 & .03 & .01 & .01 & .01 & .01 & .00 & .01 & .01 & .03 & .02 & .02 & .02 & .60 & .01 & .01 & .01 \\ \hhline{~*\items{|-}|}
+& \emoji{1F384} & .10 & .03 & .01 & .01 & .02 & .01 & .01 & .01 & .01 & .01 & .02 & .00 & .02 & .02 & .01 & .01 & .01 & .66 & .01 & .01 \\ \hhline{~*\items{|-}|}
+& \emoji{1F4F8} & .12 & .04 & .00 & .01 & .02 & .01 & .00 & .01 & .01 & .00 & .00 & .00 & .01 & .03 & .01 & .01 & .01 & .01 & .67 & .01 \\ \hhline{~*\items{|-}|}
+& \emoji{1F61C} & .14 & .03 & .01 & .00 & .02 & .01 & .01 & .00 & .00 & .00 & .00 & .01 & .01 & .03 & .01 & .01 & .01 & .01 & .01 & .66 \\ \hhline{~*\items{|-}|}
+\end{tabular}
+\end{table}
+\newcommand\items{0}  %Number of classes
+\arrayrulecolor{black} %Table line colors
+
+\begin{table}[t]
+\caption{F1-scores for random forest and CART with different feature combinations}
+\label{tb:scores}
+\centering
+\begin{tabularx}{237pt}{c|cccc}
+	\toprule
+		& \textbf{Precision} & \textbf{Recall} & \textbf{F1-score} & \textbf{Support} \\
+	\midrule
+		\emoji{2764} & 0.42& 0.48& \emph{0.45}& 9295 \\
+		\emoji{1F60D} & 0.64& 0.35& \emph{0.45}& 9719 \\
+		\emoji{1F602} &  0.69& 0.50& 0.58& 7238 \\
+		\emoji{1F495} &  0.49& 0.46& 0.48& 3050 \\
+		\emoji{1F525} &  0.58& 0.62& 0.60& 2327 \\
+		\emoji{1F60A} &  0.46& 0.58& 0.51& 1814 \\
+		\emoji{1F60E} &  0.47& 0.60& 0.52& 1605 \\
+		\emoji{2728} &  0.47& 0.66& 0.55& 1328 \\
+		\emoji{1F499} &  0.46& 0.67& 0.55& 1228 \\
+		\emoji{1F618} &  0.44& 0.66& 0.53& 1105 \\
+		\emoji{1F4F7} &  0.55& 0.50& 0.52& 1674\\
+		\emoji{1F1FA-1F1F8} &  0.58& 0.56& 0.57& 1585 \\
+		\emoji{2600} &  0.11& 0.44& 0.17&  357 \\
+		\emoji{1F49C} &  0.44& 0.54& 0.48& 1095 \\
+		\emoji{1F609} &  0.49& 0.56& 0.52& 1195 \\
+		\emoji{1F4AF} & 0.50& 0.56& 0.53& 1112 \\
+		\emoji{1F601} & 0.47& 0.59& 0.52& 1038 \\
+		\emoji{1F384} & 0.68& 0.71& \textbf{0.70}& 1228 \\
+		\emoji{1F4F8} &  0.51& 0.58& 0.54& 1134 \\
+		\emoji{1F61C} &  0.46& 0.63& 0.53&  873 \\
+	\midrule
+		avg & 0.54&0.51&0.51&50000\\
+	\bottomrule
+\end{tabularx}
+\end{table}
+
+%\begin{figure}[t]
+%\centering
+%\subfloat[Ground Truth]{
+%\begin{minipage}[t]{0.22\textwidth}
+%\centering
+%\includegraphics[scale=.33]{SynAllComp3-img0.png}
+%\end{minipage}
+%}
+%\subfloat[Proposed Method]{
+%\begin{minipage}[t]{0.22\textwidth}
+%\centering
+%\includegraphics[scale=.33]{SynAllComp3-img1.png}
+%\end{minipage}
+%}
+%\subfloat[Graphical Lasso]{
+%\begin{minipage}[t]{0.22\textwidth}
+%\centering
+%\includegraphics[scale=.33]{SynAllComp3-img2.png}
+%\end{minipage}
+%}
+%\subfloat[Modified GLasso]{
+%\begin{minipage}[t]{0.22\textwidth}
+%\centering
+%\includegraphics[scale=.33]{SynAllComp3-img3.png}
+%\end{minipage}
+%}
+%\caption{Learned precision matrices of three methods. Every charts stands for a precision matrix, and red dots in them denotes a non-zero element in the model. There are 100 nodes in it and \(T=20\)}
+%\label{fig:synDemo}
+%\end{figure}
+
+%\begin{figure}[t]
+%\centering
+%\subfloat[]{
+%\begin{minipage}[t]{0.45\textwidth}
+%\centering
+%\includegraphics[scale=.45]{SynGroups.png}
+%\end{minipage}
+%\label{fig:synCharts1}
+%}
+%\subfloat[]{
+%\begin{minipage}[t]{0.45\textwidth}
+%\centering
+%\includegraphics[scale=.45]{SynNFeature.png}
+%\end{minipage}
+%\label{fig:synCharts2}
+%}
+%\caption{Effectiveness comparison. Charts from top to bottom respectively show running time, \(F_1\) score and \(P\). (a) shows indicators changing with \(T\), the total number of stages. (b) shows indicators changing with the total number of nodes (features). In group (a), \(r=1\). In group (b), \(r=3\).}
+%\label{fig:synCharts}
+%\end{figure}
+
+
+%\begin{figure}[t]
+%\centering
+%\subfloat[Subgraph with Quan Yuan]{
+%\begin{minipage}[t]{0.4\textwidth}
+%\centering
+%\includegraphics[scale=.6]{Pic-Quanyuan.png}
+%\end{minipage}
+%\label{fig:true1}
+%}
+%\subfloat[the Whole Graph]{
+%\begin{minipage}[t]{0.5\textwidth}
+%\centering
+%\includegraphics[scale=.2]{Pic-All.png}
+%\end{minipage}
+%\label{fig:true2}
+%}
+%\caption{The Learned Graph of the DBLP Subset. There are 42 nodes and 132 edges in the graph.}
+%\label{fig:trueSet}
+%\end{figure}
+
+\section{Conclusion and future work}
+\label{sc5}
+The results of our experiments show that feature-based methods for emoji prediction is a feasible way to tackle the problem. Random forest as classifier is both easy to train and giving good results. The results also show that the performance of random forest is even and good for 20 most frequent emojis. Problems indicated by the results is that some most frequent emojis are tend to be mis-predicted for their ambiuous usages of Twitter users, while some less frequent emojis are more precisely predicted for their certain meaning and usages.
+
+After the evaluation, we also read some papers after we got the results. However, because the time is limited, we would like to implement them in the future if possible. We want to improve our project in two ways. One is use deep-learning method like BLSTM\cite{bib4}, the other is to find more features. For example, we find pattern feature in another paper\cite{bib3}, which divide words into three categories according to their frequency, namely High Frequency Words, Content Words and Regular Words. With the different permutation and combination, we can get different patterns. And we can use those patterns as features. Other features like punctuation features can also be used in our future work.
+
+\clearpage
+\footnotesize
+\begin{thebibliography}{99}
+\bibitem{bib4} Barbieri, F., Ballesteros, M., \& Saggion, H. (2017). Are Emojis Predictable?. \emph{arXiv preprint arXiv:1702.07285}.
+\bibitem{bib1} Agarwal, A., Xie, B., Vovsha, I., Rambow, O., \& Passonneau, R. (2011, June). Sentiment analysis of twitter data. In \emph{the workshop on languages in social media} (pp. 30-38). Association for Computational Linguistics.
+\bibitem{bib2} TextBlob: Simplified Text Processing. Retrieved November 20, 2017, from http://textblob.readthedocs.io/en/dev/
+\bibitem{bib3} Kanavos, A., Nodarakis, N., Sioutas, S., Tsakalidis, A., Tsolis, D., \& Tzimas, G. (2017). Large Scale Implementations for Twitter Sentiment Classification. \emph{Algorithms}, 10(1), 33.
+\bibitem{skipgram} F. Barbieri. How Cosmopolitan Are Emojis?. Retrieved December 11, 2017, from https://github.com/fvancesco/acmmm2016
+
+\bibitem{bib5} Walter Rader, Online slang dictionary, Retrieved november 20, 2017, from http://onlineslangdictionary.com/
+
+\bibitem{bib6} Aoki, S., \& Uchida, O. (2011, March). A method for automatically generating the emotional vectors of emoticons using weblog articles. In Proc. \emph{10th WSEAS Int. Conf. on Applied Computer and Applied Computational Science}, Stevens Point, Wisconsin, USA (pp. 132-136).
+\bibitem{bib7} Espinosa-Anke, L., Saggion, H., \& Barbieri, F. (2016). Revealing patterns of Twitter emoji usage in Barcelona and Madrid. \emph{Frontiers in Artificial Intelligence and Applications}. 2016;(Artificial Intelligence Research and Development) 288: 239-44.
+\bibitem{bib8} Barbieri, F., Kruszewski, G., Ronzano, F., \& Saggion, H. (2016, October). How cosmopolitan are emojis?: Exploring emojis usage and meaning over different languages with distributional semantics. In Proceedings of \emph{the 2016 ACM on Multimedia Conference} (pp. 531-535). ACM.
+\bibitem{bib9} Barbieri, F., Ronzano, F., \& Saggion, H. (2016). What does this Emoji Mean? A Vector Space Skip-Gram Model for Twitter Emojis. \emph{LREC}.
+\bibitem{bib10} Eisner, B., Rocktäschel, T., Augenstein, I., Bošnjak, M., \& Riedel, S. (2016). emoji2vec: Learning emoji representations from their description. \emph{arXiv preprint arXiv:1609.08359}.
+\bibitem{bib11} Ljubešić, N., \& Fišer, D. (2016). A Global Analysis of Emoji Usage. In Proceedings of \emph{the 10th Web as Corpus Workshop} (pp. 82-89).
+
+\bibitem{bib14} Tian, Y., Galery, T., Dulcinati, G., Molimpakis, E., \& Sun, C. (2017). Facebook Sentiment: Reactions and Emojis. \emph{SocialNLP} 2017, 11.
+\bibitem{bib12} Felbo, B., Mislove, A., Søgaard, A., Rahwan, I., \& Lehmann, S. (2017). Using millions of emoji occurrences to learn any-domain representations for detecting sentiment, emotion and sarcasm. \emph{arXiv preprint arXiv:1708.00524}.
+\bibitem{bib13} Novak, P. K., Smailović, J., Sluban, B., \& Mozetič, I. (2015). Sentiment of emojis. \emph{PloS one}, 10(12), e0144296.
+\end{thebibliography}
+
+\subsection*{Note}
+Jiarong Yu contributed to Sections \ref{sc1} and \ref{sc2} of this report.
+
+\noindent Shuai Hao contributed to Sections \ref{sc32}, \ref{sc33}, \ref{sc5}, and abstract of this report.
+
+\noindent Shou Liu contributed to Sections \ref{sc2}, \ref{sc31}, \ref{sc34}, \ref{sc4}, \ref{sc5} and all pictures and tables of this report. He also typeset this report in \LaTeX.
+%\bibliographystyle{plain}
+%\bibliography{../ml}
+\end{document}
