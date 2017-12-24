@@ -15,7 +15,7 @@ def loadLabels(filename):
 
 def evaluation(name):
 	datasetName = "skipGram"
-	datasetName = ""
+	#datasetName = ""
 	predFile = datasetName + name + ".PRepeat.PSlang.PPositive.PNegative.NN.VB.JJ.RB.Non-Eng.SentimentScore.Stopwords.UppercaseRatio.labels"#"Prediction.labels"
 	trueFile = "../data/us_trial.labels"
 
@@ -33,4 +33,3 @@ def evaluation(name):
 evaluation('CART')
 evaluation('RandomForest')
 evaluation('AdaBoost')
-#evaluation('KNN')
